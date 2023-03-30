@@ -1,0 +1,11 @@
+schemaVersion: 2.0.0
+
+# TODO: process should not be executing as root.
+fileExistenceTests:
+- name: 'entrypoint'
+  path: '/app/bin'
+  shouldExist: true
+  permissions: '-r-xr-xr-x'
+  uid: 0
+  gid: 0
+  isExecutableBy: 'group'

@@ -1,0 +1,175 @@
+load("@aspect_rules_swc//swc:defs.bzl", "swc")
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_image_layer")
+load("@bazel_skylib//lib:partial.bzl", "partial")
+load("@npm//:defs.bzl", "npm_link_all_packages")
+
+load("@rules_oci//oci:defs.bzl", "oci_image", "structure_test", "oci_tarball", "oci_image_index", "oci_push")
+load("@aspect_bazel_lib//lib:transitions.bzl", "platform_transition_filegroup")
+load(":tools/stamp_tags.bzl", "stamp_tags")
+
+npm_link_all_packages(name = "node_modules")
+
+# For more information about using swc to transpile please see the ts_project_transpiler example
+ts_project(
+    name = "swc",
+    srcs = [
+        "src/app.controller.ts",
+        "src/app.module.ts",
+        "src/app.service.ts",
+        "src/main.ts",
+    ],
+    declaration = True,
+    transpiler = partial.make(
+        swc,
+        swcrc = ".swcrc",
+    ),
+    deps = [
+        ":node_modules/@nestjs/common",
+        ":node_modules/@nestjs/core",
+        ":node_modules/@types/node",
+    ],
+)
+
+js_binary(
+    name = "bin",
+    data = [
+        ":swc",
+        # Added by swc during transpilation and used at runtime
+        ":node_modules/regenerator-runtime",
+    ],
+    entry_point = "src/main.js",
+)
+
+# Image
+js_image_layer(
+    name = "layers",
+    binary = ":bin",
+    root = "/app",
+    visibility = ["//visibility:__pkg__"],
+)
+
+platform(
+    name = "amd64_linux",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+)
+
+platform_transition_filegroup(
+    name = "transitioned_layers",
+    srcs = [":layers"],
+    target_platform = ":amd64_linux",
+)
+
+
+# TODO: can extract common bits later.
+# AMD64 images
+oci_image(
+    name = "image_amd64",
+    architecture = "amd64",
+    # Since js_binary depends on bash we have to bring in a base image that has bash
+    base = "@debian_amd64//:image",
+    # This is going to be /{root of js_image_layer}/{package_name()}/{name of js_binary}
+    cmd = ["/app/bin"],
+    entrypoint = ["bash"],
+    tars = [
+        ":transitioned_layers",
+    ],
+    os = "linux",
+    # This needs to be done with stamping etc, later
+    labels = {
+        "image.version": "xxx",
+        "image.source": "https://github.com/WASSHAInc/something",
+    },
+    visibility = ["//visibility:public"],
+)
+
+# ARM64 images
+oci_image(
+    name = "image_arm64",
+    architecture = "arm64",
+    # Since js_binary depends on bash we have to bring in a base image that has bash
+    base = "@debian_arm64//:image",
+    # This is going to be /{root of js_image_layer}/{package_name()}/{name of js_binary}
+    cmd = ["/app/bin"],
+    entrypoint = ["bash"],
+    tars = [
+        ":transitioned_layers",
+    ],
+    os = "linux",
+    # This needs to be done with stamping etc, later
+    labels = {
+        "image.version": "xxx",
+        "image.source": "https://github.com/WASSHAInc/something",
+    },
+    visibility = ["//visibility:public"],
+)
+
+
+
+# TODO automate iterating this over all images.
+# https://docs.aspect.build/guides/rules_oci_migration
+structure_test(
+    name = "image_test_amd64",
+    config = ["test.yaml"],
+    image = ":image_amd64",
+    # ./image_test.image: line 214: /usr/bin/docker: No such file or directory
+    tags = ["no-remote-exec"],
+)
+
+structure_test(
+    name = "image_test_arm64",
+    config = ["test.yaml"],
+    image = ":image_arm64",
+    tags = ["no-remote-exec"],
+)
+
+# the oci_image target can be loaded into the daemon by running bazel build :tarball, docker load -i bazel-bin/tarball/tarball.tar respectively.
+# docker_run_flags can be passed to docker directly when running docker run gcr.io/test:latest
+
+# TODO: Automate switching architecture for local tarball builds
+oci_tarball(
+    name = "tarball_amd64",
+    image = ":image_amd64",
+    repotags = ["example/image:latest"]
+)
+
+oci_tarball(
+    name = "tarball_arm64",
+    image = ":image_arm64",
+    repotags = ["example/image:latest"]
+)
+
+oci_image_index(
+    name = "image_index",
+    images = [
+        ":image_amd64",
+        ":image_arm64"
+    ],
+)
+
+stamp_tags(
+    name = "stamped",
+    repotags = [
+        # With --stamp, use the --embed_label value, otherwise use 0.0.0
+        """($stamp.BUILD_EMBED_LABEL // "0.0.0")""",
+        "latest",
+    ],
+)
+
+# Push all images
+oci_push(
+    name = "push_image_index",
+    image = ":image_index",
+    repository = "067333984569.dkr.ecr.af-south-1.amazonaws.com/example",
+    repotags = ":stamped",
+)
+
+# Push only amd64
+oci_push(
+    name = "push_image_amd64",
+    image = ":image_amd64",
+    repository = "067333984569.dkr.ecr.af-south-1.amazonaws.com/example",
+)
