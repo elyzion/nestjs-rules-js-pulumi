@@ -3,12 +3,18 @@ load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_image_layer")
 load("@bazel_skylib//lib:partial.bzl", "partial")
 load("@npm//:defs.bzl", "npm_link_all_packages")
+load("@pnpm__links//:defs.bzl", npm_link_pnpm = "npm_link_imported_package")
 
 load("@rules_oci//oci:defs.bzl", "oci_image", "structure_test", "oci_tarball", "oci_image_index", "oci_push")
 load("@aspect_bazel_lib//lib:transitions.bzl", "platform_transition_filegroup")
 load(":tools/stamp_tags.bzl", "stamp_tags")
 
-npm_link_all_packages(name = "node_modules")
+npm_link_all_packages(
+    name = "node_modules",
+    imported_links = [
+        npm_link_pnpm,
+    ],
+)
 
 # For more information about using swc to transpile please see the ts_project_transpiler example
 ts_project(

@@ -1,0 +1,40 @@
+load("@aspect_rules_swc//swc:defs.bzl", "swc")
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+load("@aspect_rules_js//js:defs.bzl", "js_binary")
+load("@bazel_skylib//lib:partial.bzl", "partial")
+load("@npm//:defs.bzl", "npm_link_all_packages")
+
+npm_link_all_packages(name = "node_modules")
+
+# For more information about using swc to transpile please see the ts_project_transpiler example
+ts_project(
+    name = "pulumi",
+    srcs = [
+        "index.ts",
+    ],
+    declaration = True,
+    transpiler = partial.make(
+        swc,
+        swcrc = ".swcrc",
+    ),
+    deps = [
+        ":node_modules/@pulumi/pulumi",
+        ":node_modules/@pulumi/aws",
+        ":node_modules/@pulumi/awsx",
+        ":node_modules/@pulumi/kubernetes",
+        ":node_modules/@types/node",
+    ],
+)
+
+js_binary(
+    name = "plain_bin",
+    data = [
+        ":pulumi",
+    ],
+    env = {
+        # Did not set anything for this.
+        "PULUMI_CONFIG_PASSPHRASE": "",
+    },
+    entry_point = "index.js",
+)
+
