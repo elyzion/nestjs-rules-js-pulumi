@@ -46,6 +46,12 @@ npm_translate_lock(
     name = "npm",
     npmrc = "//:.npmrc",
     pnpm_lock = "//:pnpm-lock.yaml",
+    update_pnpm_lock = True,
+    data = [
+        "//:package.json",
+        "//:pnpm-workspace.yaml",
+        "//manifests:package.json",
+    ],
     verify_node_modules_ignored = "//:.bazelignore",
 )
 
@@ -63,7 +69,6 @@ swc_register_toolchains(
     name = "swc",
     swc_version = LATEST_SWC_VERSION,
 )
-
 
 ###
 # Setup rules_oci
