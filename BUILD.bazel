@@ -86,8 +86,7 @@ oci_image(
     os = "linux",
     # This needs to be done with stamping etc, later
     labels = {
-        "image.version": "xxx",
-        "image.source": "https://github.com/WASSHAInc/something",
+        "org.opencontainers.image.version": """($stamp.STABLE_BUILD_VERSION // "MISSING")""",
     },
     visibility = ["//visibility:public"],
 )
@@ -107,8 +106,7 @@ oci_image(
     os = "linux",
     # This needs to be done with stamping etc, later
     labels = {
-        "image.version": "xxx",
-        "image.source": "https://github.com/WASSHAInc/something",
+        "org.opencontainers.image.version": """($stamp.STABLE_BUILD_VERSION // "MISSING")""",
     },
     visibility = ["//visibility:public"],
 )
@@ -159,10 +157,11 @@ oci_image_index(
 stamp_tags(
     name = "stamped",
     repotags = [
-        # With --stamp, use the --embed_label value, otherwise use 0.0.0
-        """($stamp.BUILD_EMBED_LABEL // "0.0.0")""",
+        """($stamp.STABLE_BUILD_VERSION // "MISSING")""",
+        """($stamp.STABLE_GIT_COMMIT // "MISSING")""",
+        """($stamp.STABLE_USER_NAME // "MISSING")""",
         "latest",
-    ],
+    ]
 )
 
 # Push all images
@@ -178,4 +177,13 @@ oci_push(
     name = "push_image_amd64",
     image = ":image_amd64",
     repository = "067333984569.dkr.ecr.af-south-1.amazonaws.com/example",
+    repotags = ":stamped",
+)
+
+# Push only amd64
+oci_push(
+    name = "push_image_arm64",
+    image = ":image_arm64",
+    repository = "067333984569.dkr.ecr.af-south-1.amazonaws.com/example",
+    repotags = ":stamped",
 )

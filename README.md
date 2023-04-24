@@ -9,7 +9,9 @@ Install `bazelisk`, that should be all that is needed.
 ## Commands
 
 Push images to ECR:
- `bazelisk run //:push_image_index --stamp --embed_label=0.0.1`
+ `bazelisk run //:push_image_index`
+
+The above will push both amd64 and arm64 images. When pulling an image there is not need to specify architecture.
 
 Run locally:
  `bazelisk run //:bin`
@@ -29,6 +31,14 @@ Build a docker image tarball for your platform:
 
 Load tarball into local docker:
  `docker load -i bazel-bin/tarball/tarball_YOURPLATFORM.tar`
+
+Authenticate docker:  
+
+```
+aws-vault exec wassha-eaas-dev -- aws ecr get-login-password --region af-south-1 | docker login --username AWS --password-stdin 067333984569.dkr.ecr.af-south-1.amazonaws.com
+```
+
+This should be replaced with an authentication helper.
 
 # Aspect Bazel Automatic Updates
 
