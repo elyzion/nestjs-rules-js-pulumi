@@ -1,8 +1,14 @@
 {
   "compilerOptions": {
+    "strict": true,
     "experimentalDecorators": true,
-    "target": "ES2020",
+    "target": "es2022",
     "module": "commonjs",
-    "declaration": true
+    "declaration": true,
+    "sourceMap": true,
+    "pretty": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "forceConsistentCasingInFileNames": true
   }
 }

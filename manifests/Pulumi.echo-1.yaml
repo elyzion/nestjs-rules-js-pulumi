@@ -1,1 +1,4 @@
-encryptionsalt: v1:bFle8lNHC9s=:v1:wyAu+Hu4RyT+dDzf:3z/idGo97GAgj4RCPc+Nb+f4nTBTKQ==
+config:
+  aws:region: af-south-1
+  kubernetes:context: arn:aws:eks:af-south-1:067333984569:cluster/eaas-dev
+  kubernetes:namespace: echo-1

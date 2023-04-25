@@ -1,13 +1,16 @@
 load("@aspect_rules_swc//swc:defs.bzl", "swc")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
-load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_image_layer")
+load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_image_layer", "js_run_binary")
 load("@bazel_skylib//lib:partial.bzl", "partial")
 load("@npm//:defs.bzl", "npm_link_all_packages")
 load("@pnpm__links//:defs.bzl", npm_link_pnpm = "npm_link_imported_package")
+load("@container_structure_test//:defs.bzl", "container_structure_test")
 
-load("@rules_oci//oci:defs.bzl", "oci_image", "structure_test", "oci_tarball", "oci_image_index", "oci_push")
+
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_tarball", "oci_image_index", "oci_push")
 load("@aspect_bazel_lib//lib:transitions.bzl", "platform_transition_filegroup")
-load(":tools/stamp_tags.bzl", "stamp_tags")
+load("//tools:stamp_tags.bzl", "stamp_tags")
+load("//tools:multiarch.bzl", "multi_arch")
 
 npm_link_all_packages(
     name = "node_modules",
@@ -15,6 +18,45 @@ npm_link_all_packages(
         npm_link_pnpm,
     ],
 )
+
+# Generates a version.txt that we can then load in our pulumi rules/codes etc.
+genrule(
+    name = "version",
+    outs = ["version.txt"],
+    # alternative: "sed -n 's/STABLE_BUILD_GIT_DESCRIBE //p' bazel-out/stable-status.txt"
+    cmd_bash = "grep -Po '^STABLE_BUILD_VERSION\\s+\\K.*' bazel-out/stable-status.txt |tee $@",
+    stamp = True,
+    visibility = ["//visibility:public"],
+)
+
+platform(
+    name = "linux_arm64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:arm64",
+    ],
+)
+
+platform(
+    name = "linux_amd64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+)
+
+#https://github.com/aspect-build/rules_swc/tree/main/examples/generate_swcrc
+# Generates the .swcrc file from the tsconfig file.
+# 
+#js_run_binary(
+#    name = "write_swcrc",
+#    tool = "//tools:converter",
+#    chdir = package_name(),
+#    args = ["./tsconfig.json"],
+#    srcs = ["tsconfig.json"],
+#    stdout = ".swcrc",
+#)
+
 
 # For more information about using swc to transpile please see the ts_project_transpiler example
 ts_project(
@@ -44,113 +86,96 @@ js_binary(
         # Added by swc during transpilation and used at runtime
         ":node_modules/regenerator-runtime",
     ],
+    # This is actually required, as the documented way of doing this does not switch the toolchain for us
+    node_toolchain = select({
+        "@platforms//cpu:arm64": "@nodejs_linux_arm64//:node_toolchain",
+        "@platforms//cpu:x86_64": "@nodejs_linux_amd64//:node_toolchain",
+    }),
     entry_point = "src/main.js",
 )
 
-# Image
 js_image_layer(
     name = "layers",
     binary = ":bin",
+    platform = select({
+        "@platforms//cpu:arm64": ":linux_arm64",
+        "@platforms//cpu:x86_64": ":linux_amd64",
+    }),
     root = "/app",
     visibility = ["//visibility:__pkg__"],
 )
 
-platform(
-    name = "amd64_linux",
-    constraint_values = [
-        "@platforms//os:linux",
-        "@platforms//cpu:x86_64",
+oci_image(
+    name = "image",
+    # Since js_binary depends on bash we have to bring in a base image that has bash
+    base = "@debian",
+    # This is going to be /{root of js_image_layer}/{package_name()}/{name of js_binary}
+    cmd = ["-c", "/app/bin"],
+    entrypoint = ["/bin/bash"],
+    tars = [
+        ":layers",
     ],
+    visibility = ["//visibility:public"],
+    # This needs to be done with stamping etc, later
+    labels = {
+        "org.opencontainers.image.version": """($stamp.STABLE_BUILD_VERSION // "MISSING")""",
+    },
 )
 
 platform_transition_filegroup(
-    name = "transitioned_layers",
-    srcs = [":layers"],
-    target_platform = ":amd64_linux",
+    name = "transitioned_image",
+    srcs = [":image"],
+    target_platform = select({
+        "@platforms//cpu:arm64": ":linux_arm64",
+        "@platforms//cpu:x86_64": ":linux_amd64",
+    }),
 )
 
-
-# TODO: can extract common bits later.
-# AMD64 images
-oci_image(
-    name = "image_amd64",
-    architecture = "amd64",
-    # Since js_binary depends on bash we have to bring in a base image that has bash
-    base = "@debian_amd64//:image",
-    # This is going to be /{root of js_image_layer}/{package_name()}/{name of js_binary}
-    cmd = ["/app/bin"],
-    entrypoint = ["bash"],
-    tars = [
-        ":transitioned_layers",
-    ],
-    os = "linux",
-    # This needs to be done with stamping etc, later
-    labels = {
-        "org.opencontainers.image.version": """($stamp.STABLE_BUILD_VERSION // "MISSING")""",
-    },
-    visibility = ["//visibility:public"],
-)
-
-# ARM64 images
-oci_image(
-    name = "image_arm64",
-    architecture = "arm64",
-    # Since js_binary depends on bash we have to bring in a base image that has bash
-    base = "@debian_arm64//:image",
-    # This is going to be /{root of js_image_layer}/{package_name()}/{name of js_binary}
-    cmd = ["/app/bin"],
-    entrypoint = ["bash"],
-    tars = [
-        ":transitioned_layers",
-    ],
-    os = "linux",
-    # This needs to be done with stamping etc, later
-    labels = {
-        "org.opencontainers.image.version": """($stamp.STABLE_BUILD_VERSION // "MISSING")""",
-    },
-    visibility = ["//visibility:public"],
-)
-
-
-
-# TODO automate iterating this over all images.
-# https://docs.aspect.build/guides/rules_oci_migration
-structure_test(
-    name = "image_test_amd64",
-    config = ["test.yaml"],
-    image = ":image_amd64",
+container_structure_test(
+    name = "image_test",
+    configs = ["test.yaml"],
+    image = ":transitioned_image",
     # ./image_test.image: line 214: /usr/bin/docker: No such file or directory
     tags = ["no-remote-exec"],
 )
 
-structure_test(
-    name = "image_test_arm64",
-    config = ["test.yaml"],
-    image = ":image_arm64",
-    tags = ["no-remote-exec"],
-)
-
-# the oci_image target can be loaded into the daemon by running bazel build :tarball, docker load -i bazel-bin/tarball/tarball.tar respectively.
-# docker_run_flags can be passed to docker directly when running docker run gcr.io/test:latest
-
-# TODO: Automate switching architecture for local tarball builds
-oci_tarball(
-    name = "tarball_amd64",
-    image = ":image_amd64",
-    repotags = ["example/image:latest"]
+# Use this when refactoring to simplify the build process and reduce repitition
+# Will build images for all listed platforms.
+multi_arch(
+    name = "images",
+    image = ":image",
+    platforms = [
+        "//:linux_arm64",
+        "//:linux_amd64",
+    ],
 )
 
 oci_tarball(
-    name = "tarball_arm64",
-    image = ":image_arm64",
-    repotags = ["example/image:latest"]
+    name = "tarball",
+    image = ":image",
+    tags = ["example/image:amd64"]
+)
+
+oci_push(
+    name = "push_image",
+    image = ":transitioned_image",
+    repository = "067333984569.dkr.ecr.af-south-1.amazonaws.com/example",
+    remote_tags = ":stamped",
+)
+
+# Push all images
+oci_push(
+    name = "push_image_index",
+    image = ":image_index",
+    repository = "067333984569.dkr.ecr.af-south-1.amazonaws.com/example",
+    remote_tags = ":stamped",
+    visibility = ["//visibility:public"],
 )
 
 oci_image_index(
     name = "image_index",
     images = [
-        ":image_amd64",
-        ":image_arm64"
+        ":images",
     ],
 )
 
@@ -161,29 +186,7 @@ stamp_tags(
         """($stamp.STABLE_GIT_COMMIT // "MISSING")""",
         """($stamp.STABLE_USER_NAME // "MISSING")""",
         "latest",
-    ]
+    ],
+    visibility = ["//visibility:public"],
 )
 
-# Push all images
-oci_push(
-    name = "push_image_index",
-    image = ":image_index",
-    repository = "067333984569.dkr.ecr.af-south-1.amazonaws.com/example",
-    repotags = ":stamped",
-)
-
-# Push only amd64
-oci_push(
-    name = "push_image_amd64",
-    image = ":image_amd64",
-    repository = "067333984569.dkr.ecr.af-south-1.amazonaws.com/example",
-    repotags = ":stamped",
-)
-
-# Push only amd64
-oci_push(
-    name = "push_image_arm64",
-    image = ":image_arm64",
-    repository = "067333984569.dkr.ecr.af-south-1.amazonaws.com/example",
-    repotags = ":stamped",
-)

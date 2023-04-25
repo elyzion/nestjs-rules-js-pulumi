@@ -34,11 +34,15 @@ Load tarball into local docker:
 
 Authenticate docker:  
 
-```
-aws-vault exec wassha-eaas-dev -- aws ecr get-login-password --region af-south-1 | docker login --username AWS --password-stdin 067333984569.dkr.ecr.af-south-1.amazonaws.com
-```
+`aws-vault exec wassha-eaas-dev -- aws ecr get-login-password --region af-south-1 | docker login --username AWS --password-stdin 067333984569.dkr.ecr.af-south-1.amazonaws.com`
 
 This should be replaced with an authentication helper.
+
+Update pnpm lock file after adding a dep:
+`pnpm install --lockfile-only`
+
+* Always remember to add any added dependencies to the ts_project deps declaration in BUILD.bazel.
+
 
 # Aspect Bazel Automatic Updates
 
