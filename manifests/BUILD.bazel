@@ -1,6 +1,6 @@
 load("@aspect_rules_swc//swc:defs.bzl", "swc")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
-load("@aspect_rules_js//js:defs.bzl", "js_binary")
+load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_run_binary")
 load("@bazel_skylib//lib:partial.bzl", "partial")
 load("@npm//:defs.bzl", "npm_link_all_packages")
 
@@ -13,28 +13,102 @@ ts_project(
         "index.ts",
     ],
     declaration = True,
+    source_map = True,
     transpiler = partial.make(
         swc,
         swcrc = ".swcrc",
     ),
     deps = [
-        ":node_modules/@pulumi/pulumi",
         ":node_modules/@pulumi/aws",
         ":node_modules/@pulumi/awsx",
         ":node_modules/@pulumi/kubernetes",
+        ":node_modules/@pulumi/pulumi",
         ":node_modules/@types/node",
+        ":node_modules/cmd-ts",
     ],
 )
 
+
 js_binary(
-    name = "plain_bin",
+    name = "bin",
     data = [
         ":pulumi",
+        "//:version",
+        # TODO: we actually need to *push* the image.. which is a run, not a build.
+        "//:push_image_index"
     ],
+    entry_point = "index.js",
     env = {
         # Did not set anything for this.
         "PULUMI_CONFIG_PASSPHRASE": "",
     },
-    entry_point = "index.js",
 )
 
+
+js_binary(
+    name = "preview",
+    data = [
+        ":pulumi",
+        "//:version",
+        "//:push_image_index"
+    ],
+    args = [
+        "preview", 
+        "--version-label-from=version.txt"
+    ],
+    entry_point = "index.js",
+    env = {
+        # Did not set anything for this.
+        "PULUMI_CONFIG_PASSPHRASE": "",
+    },
+)
+
+
+js_binary(
+    name = "destroy",
+    data = [
+        ":pulumi",
+        "//:version",
+    ],
+    args = [
+        "destroy", 
+        "--version-label-from=version.txt"
+    ],
+    entry_point = "index.js",
+    env = {
+        # Did not set anything for this.
+        "PULUMI_CONFIG_PASSPHRASE": "",
+    },
+)
+
+
+js_binary(
+    name = "deploy",
+    data = [
+        ":pulumi",
+        "//:version",
+        "//:push_image_index"
+    ],
+    args = [
+        "deploy", 
+        "--version-label-from=version.txt"
+    ],
+    entry_point = "index.js",
+    env = {
+        # Did not set anything for this.
+        "PULUMI_CONFIG_PASSPHRASE": "",
+    },
+)
+
+
+#https://github.com/aspect-build/rules_swc/tree/main/examples/generate_swcrc
+# Generates the .swcrc file from the tsconfig file.
+# Technically we can do this *once* and copy the generated file around.
+js_run_binary(
+    name = "write_swcrc",
+    tool = "//tools:converter",
+    chdir = package_name(),
+    args = ["./tsconfig.json"],
+    srcs = ["tsconfig.json"],
+    stdout = ".swcrc",
+)

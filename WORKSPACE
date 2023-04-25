@@ -6,24 +6,24 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "aspect_rules_js",
-    sha256 = "a592fafd8a27b2828318cebbda0003686c6da3318df366b563e8beeffa05a02c",
-    strip_prefix = "rules_js-1.21.0",
-    url = "https://github.com/aspect-build/rules_js/releases/download/v1.21.0/rules_js-v1.21.0.tar.gz",
+    sha256 = "08061ba5e5e7f4b1074538323576dac819f9337a0c7d75aee43afc8ae7cb6e18",
+    strip_prefix = "rules_js-1.26.1",
+    url = "https://github.com/aspect-build/rules_js/releases/download/v1.26.1/rules_js-v1.26.1.tar.gz",
 )
 
 http_archive(
     name = "aspect_rules_swc",
-    sha256 = "c35e633c2c90a4cd6796e66d66bcf37d31a81737afc76030201a9ef8599abc58",
-    strip_prefix = "rules_swc-0.21.3",
-    url = "https://github.com/aspect-build/rules_swc/archive/refs/tags/v0.21.3.tar.gz",
+    sha256 = "b647c7c31feeb7f9330fff08b45f8afe7de674d3a9c89c712b8f9d1723d0c8f9",
+    strip_prefix = "rules_swc-1.0.1",
+    url = "https://github.com/aspect-build/rules_swc/releases/download/v1.0.1/rules_swc-v1.0.1.tar.gz",
 )
 
 http_archive(
     name = "aspect_rules_ts",
-    sha256 = "58b6c0ad158fc42883dafa157f1a25cddd65bcd788a772620192ac9ceefa0d78",
-    strip_prefix = "rules_ts-1.3.2",
-    url = "https://github.com/aspect-build/rules_ts/releases/download/v1.3.2/rules_ts-v1.3.2.tar.gz",
-)
+    sha256 = "ace5b609603d9b5b875d56c9c07182357c4ee495030f40dcefb10d443ba8c208",
+    strip_prefix = "rules_ts-1.4.0",
+    url = "https://github.com/aspect-build/rules_ts/releases/download/v1.4.0/rules_ts-v1.4.0.tar.gz",
+)   
 
 load("@aspect_rules_js//js:repositories.bzl", "rules_js_dependencies")
 
@@ -42,6 +42,7 @@ nodejs_register_toolchains(
 
 load("@aspect_rules_js//npm:npm_import.bzl", "npm_translate_lock")
 
+# This needs to list all package.json files in the repository.
 npm_translate_lock(
     name = "npm",
     npmrc = "//:.npmrc",
@@ -79,9 +80,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "rules_oci",
-    sha256 = "4a738bdbeacb0e1df070209dddfa7b55fed9bbc553b905cf3d2dd25115e0b598",
-    strip_prefix = "rules_oci-0.3.8",
-    url = "https://github.com/bazel-contrib/rules_oci/releases/download/v0.3.8/rules_oci-v0.3.8.tar.gz",
+    sha256 = "08d73a9bec22642ee12c0a38c23596cbddaba7422eede74edba3bb1044d579be",
+    strip_prefix = "rules_oci-1.0.0-rc0",
+    url = "https://github.com/bazel-contrib/rules_oci/releases/download/v1.0.0-rc0/rules_oci-v1.0.0-rc0.tar.gz",
 )
 
 load("@rules_oci//oci:dependencies.bzl", "rules_oci_dependencies")
@@ -93,26 +94,46 @@ load("@rules_oci//oci:repositories.bzl", "LATEST_CRANE_VERSION", "LATEST_ZOT_VER
 oci_register_toolchains(
     name = "oci",
     crane_version = LATEST_CRANE_VERSION,
-    # If a docker media types compatible registry is desired, just omit `zot_version` and crane registry will be used instead.
-    zot_version = LATEST_ZOT_VERSION,
+    # Uncommenting the zot toolchain will cause it to be used instead of crane for some tasks.
+    # Note that it does not support docker-format images.
+    # zot_version = LATEST_ZOT_VERSION,
 )
 
 # Optional, for oci_tarball rule
+http_archive(
+    name = "rules_pkg",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_pkg/releases/download/0.9.1/rules_pkg-0.9.1.tar.gz",
+        "https://github.com/bazelbuild/rules_pkg/releases/download/0.9.1/rules_pkg-0.9.1.tar.gz",
+    ],
+    sha256 = "8f9ee2dc10c1ae514ee599a8b42ed99fa262b757058f65ad3c384289ff70c4b8",
+)
 load("@rules_pkg//:deps.bzl", "rules_pkg_dependencies")
-
 rules_pkg_dependencies()
 
 ## Pull base images
-load("//:tools/pull.bzl", "oci_pull")
+load("@rules_oci//oci:pull.bzl", "oci_pull")
 
 oci_pull(
-    name = "debian_amd64",
-    architecture = "amd64",
-    image = "thesayyn/debian:oci",
+    name = "debian",
+    digest = "sha256:63d62ae233b588d6b426b7b072d79d1306bfd02a72bff1fc045b8511cc89ee09",
+    image = "debian",
+    platforms = [
+        "linux/amd64",
+        "linux/arm64/v8",
+    ],
 )
 
-oci_pull(
-    name = "debian_arm64",
-    architecture = "arm64",
-    image = "thesayyn/debian:oci",
+###
+# Setup container_structure_test
+###
+http_archive(
+    name = "container_structure_test",
+    sha256 = "42edb647b51710cb917b5850380cc18a6c925ad195986f16e3b716887267a2d7",
+    strip_prefix = "container-structure-test-104a53ede5f78fff72172639781ac52df9f5b18f",
+    urls = ["https://github.com/GoogleContainerTools/container-structure-test/archive/104a53ede5f78fff72172639781ac52df9f5b18f.zip"],
 )
+
+load("@container_structure_test//:repositories.bzl", "container_structure_test_register_toolchain")
+
+container_structure_test_register_toolchain(name = "container_structure_test_toolchain")

@@ -11,6 +11,7 @@ importers:
       reflect-metadata: 0.1.13
       regenerator-runtime: 0.13.11
       rxjs: 7.5.7
+      tsconfig-to-swcconfig: 2.2.0
       typescript: 4.9.3
     dependencies:
       '@nestjs/common': 9.2.0_yzt46al3aifnexifjjdb4dxxja
@@ -21,6 +22,7 @@ importers:
       rxjs: 7.5.7
     devDependencies:
       '@types/node': 18.11.9
+      tsconfig-to-swcconfig: 2.2.0
       typescript: 4.9.3
 
   manifests:
@@ -30,11 +32,13 @@ importers:
       '@pulumi/kubernetes': ^3.24.3
       '@pulumi/pulumi': ^3.0.0
       '@types/node': ^16
+      cmd-ts: ^0.12.1
     dependencies:
       '@pulumi/aws': 5.36.0
       '@pulumi/awsx': 1.0.2
       '@pulumi/kubernetes': 3.25.0
       '@pulumi/pulumi': 3.63.0
+      cmd-ts: 0.12.1
     devDependencies:
       '@types/node': 16.18.23
 
@@ -634,6 +638,17 @@ packages:
       wrap-ansi: 7.0.0
     dev: false
 
+  /cmd-ts/0.12.1:
+    resolution: {integrity: sha512-k93f6LgFEzx7/vBy5qV+tu1VI8YuH0DZmwNXPvRaDR4Qp7Fl9+pUSylX/CKHrWoKqHMJjNOLb1NeYTvHOjQ2Kw==}
+    dependencies:
+      chalk: 4.1.2
+      debug: 4.3.4
+      didyoumean: 1.2.2
+      strip-ansi: 6.0.1
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
+
   /color-convert/2.0.1:
     resolution: {integrity: sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==}
     engines: {node: '>=7.0.0'}
@@ -739,6 +754,11 @@ packages:
     resolution: {integrity: sha512-syBZ+rnAK3EgMsH2aYEOLUW7mZSY9Gb+0wUMCFsZvcmiz+HigA0LOcq/HoQqVuGG+EKykunc7QG2bzrponfaSw==}
     dev: false
 
+  /deepmerge/4.3.1:
+    resolution: {integrity: sha512-3sUqbMEc77XqpdNO7FRyRog+eW3ph+GYCbj+rK+uYyRMuwsVy0rMiVtPn+QJlKFvWP/1PYpapqYn0Me2knFn+A==}
+    engines: {node: '>=0.10.0'}
+    dev: true
+
   /define-properties/1.2.0:
     resolution: {integrity: sha512-xvqAVKGfT1+UAvPwKTVw/njhdQ8ZhXK4lI0bCIuCMrp2up9nPnaDftrLtmpTazqd1o+UY4zgzU+avtMbDP+ldA==}
     engines: {node: '>= 0.4'}
@@ -767,6 +787,10 @@ packages:
     dependencies:
       asap: 2.0.6
       wrappy: 1.0.2
+    dev: false
+
+  /didyoumean/1.2.2:
+    resolution: {integrity: sha512-gxtyfqMg7GKyhQmb056K7M3xszy/myH8w+B4RT+QXBQsvAOdc3XymqDDPHx1BgPgsdAA5SIifona89YtRATDzw==}
     dev: false
 
   /diff/3.5.0:
@@ -1300,6 +1324,11 @@ packages:
     engines: {node: '>= 0.6.0'}
     dev: false
 
+  /joycon/3.1.1:
+    resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
+    engines: {node: '>=10'}
+    dev: true
+
   /js-yaml/3.14.1:
     resolution: {integrity: sha512-okMH7OXXJ7YrN9Ok3/SXrnu4iX9yOk+25nqX4imS2npuvTYDmo/QEZoqwZkYaIDk3jVvBOTOIEgEhaLOynBS9g==}
     hasBin: true
@@ -1311,6 +1340,10 @@ packages:
   /json-parse-even-better-errors/2.3.1:
     resolution: {integrity: sha512-xyFwyhro/JEof6Ghe2iz2NcXoj2sloNsWr/XsERDK/oiPCfaNhl5ONfp+jQdAZRQQ0IJWNzH9zIZF7li91kh2w==}
     dev: false
+
+  /jsonc-parser/3.2.0:
+    resolution: {integrity: sha512-gfFQZrcTc8CnKXp6Y4/CBT3fTc0OVuDofpre4aEeEpSBPV5X5v4+Vmx+8snU7RLPrNHPKSgLxGo9YuQzz20o+w==}
+    dev: true
 
   /lodash.camelcase/4.3.0:
     resolution: {integrity: sha512-TwuEnCnxbc3rAvhf/LbG7tJUDzhqXyFnv3dtzLOPgCG/hODL7WFnsbwktkD7yUV0RrreP/l1PALq/YSg6VvjlA==}
@@ -1969,6 +2002,14 @@ packages:
       source-map-support: 0.5.21
       yn: 2.0.0
     dev: false
+
+  /tsconfig-to-swcconfig/2.2.0:
+    resolution: {integrity: sha512-Q7R60DB1NNvQr5q4LLHI+WI4e9DDevmGnIddjDHC9mJDd2V+fYbSXT/iUphdkk/+Lrx4mF767VF8VgvBdtaGMg==}
+    dependencies:
+      deepmerge: 4.3.1
+      joycon: 3.1.1
+      jsonc-parser: 3.2.0
+    dev: true
 
   /tslib/2.4.1:
     resolution: {integrity: sha512-tGyy4dAjRIEwI7BzsB0lynWgOpfqjUdq91XXAlIWD2OwKBH7oCl/GZG/HT4BOHrTlPMOASlMQ7veyTqpmRcrNA==}

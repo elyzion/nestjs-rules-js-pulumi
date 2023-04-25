@@ -1,0 +1,8 @@
+load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_run_binary")
+
+js_binary(
+    name = "converter",
+    entry_point = "write_swcrc.js",
+    data = ["//:node_modules/tsconfig-to-swcconfig"],
+    visibility = ["//visibility:public"],
+)
