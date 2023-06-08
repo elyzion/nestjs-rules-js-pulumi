@@ -1,6 +1,6 @@
 # NestJS example
 
-You can run with `bazelisk run //:bin` and then perform a `GET` on http://localhost:3000/hello-world
+You can run with `bazelisk run //:bin` and then perform a `GET` on http://localhost:8080/hello-world
 
 ## Prerequisites
 
@@ -11,7 +11,7 @@ Install `bazelisk`, that should be all that is needed.
 Push images to ECR:
  `bazelisk run //:push_image_index`
 
-The above will push both amd64 and arm64 images. When pulling an image there is not need to specify architecture.
+The above will push both amd64 and arm64 images. When pulling an image there is not need to specify architecture. Bazel will automatically detect the host platform for anything that you do locally.
 
 Run locally:
  `bazelisk run //:bin`
@@ -25,33 +25,33 @@ Build everything:
 List all actions:
  `bazelisk query //...``
 
-Build a docker image tarball for your platform:
- `bazelisk build //:tarball_arm64`
- `bazelisk build //:tarball_amd64`
+Build a docker image tarball for your platform (Currently borked!!!):
+ `bazelisk build //:tarball`
 
-Load tarball into local docker:
+Load tarball into local docker (Currently borked!):
  `docker load -i bazel-bin/tarball/tarball_YOURPLATFORM.tar`
 
 Authenticate docker:  
 
-`aws-vault exec wassha-eaas-dev -- aws ecr get-login-password --region af-south-1 | docker login --username AWS --password-stdin 067333984569.dkr.ecr.af-south-1.amazonaws.com`
+`aws-vault exec {my_credentials_here} -- aws ecr get-login-password --region af-south-1 | docker login --username AWS --password-stdin {account_number_here}.dkr.ecr.af-south-1.amazonaws.com`
 
 This should be replaced with an authentication helper.
 
+Execute Pulumi:
+
+`aws-vault exec {my_credentials_here} -- bazelisk run //manifests:deploy`
+
 Update pnpm lock file after adding a dep:
-`pnpm install --lockfile-only`
+`bazelisk run -- @pnpm//:pnpm --dir $PWD install --lockfile-only`
 
 * Always remember to add any added dependencies to the ts_project deps declaration in BUILD.bazel.
-
 
 # Aspect Bazel Automatic Updates
 
 https://docs.aspect.build/guides/bazelrc#automatic-updates
 
-
 # Migrating to rules_js
 https://docs.aspect.build/guides/rules_js_migration
-
 
 # Others
 
