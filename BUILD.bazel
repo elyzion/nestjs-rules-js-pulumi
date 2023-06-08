@@ -5,9 +5,7 @@ load("@bazel_skylib//lib:partial.bzl", "partial")
 load("@npm//:defs.bzl", "npm_link_all_packages")
 load("@pnpm__links//:defs.bzl", npm_link_pnpm = "npm_link_imported_package")
 load("@container_structure_test//:defs.bzl", "container_structure_test")
-
-
-load("@rules_oci//oci:defs.bzl", "oci_image", "oci_tarball", "oci_image_index", "oci_push")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_image_index", "oci_push", "oci_tarball")
 load("@aspect_bazel_lib//lib:transitions.bzl", "platform_transition_filegroup")
 load("//tools:stamp_tags.bzl", "stamp_tags")
 load("//tools:multiarch.bzl", "multi_arch")
@@ -47,7 +45,7 @@ platform(
 
 #https://github.com/aspect-build/rules_swc/tree/main/examples/generate_swcrc
 # Generates the .swcrc file from the tsconfig file.
-# 
+#
 #js_run_binary(
 #    name = "write_swcrc",
 #    tool = "//tools:converter",
@@ -56,7 +54,6 @@ platform(
 #    srcs = ["tsconfig.json"],
 #    stdout = ".swcrc",
 #)
-
 
 # For more information about using swc to transpile please see the ts_project_transpiler example
 ts_project(
@@ -68,6 +65,7 @@ ts_project(
         "src/main.ts",
     ],
     declaration = True,
+    source_map = True,
     transpiler = partial.make(
         swc,
         swcrc = ".swcrc",
@@ -86,12 +84,12 @@ js_binary(
         # Added by swc during transpilation and used at runtime
         ":node_modules/regenerator-runtime",
     ],
+    entry_point = "src/main.js",
     # This is actually required, as the documented way of doing this does not switch the toolchain for us
     node_toolchain = select({
         "@platforms//cpu:arm64": "@nodejs_linux_arm64//:node_toolchain",
         "@platforms//cpu:x86_64": "@nodejs_linux_amd64//:node_toolchain",
     }),
-    entry_point = "src/main.js",
 )
 
 js_image_layer(
@@ -110,16 +108,19 @@ oci_image(
     # Since js_binary depends on bash we have to bring in a base image that has bash
     base = "@debian",
     # This is going to be /{root of js_image_layer}/{package_name()}/{name of js_binary}
-    cmd = ["-c", "/app/bin"],
-    entrypoint = ["/bin/bash"],
-    tars = [
-        ":layers",
+    cmd = [
+        "-c",
+        "/app/bin",
     ],
-    visibility = ["//visibility:public"],
+    entrypoint = ["/bin/bash"],
     # This needs to be done with stamping etc, later
     labels = {
         "org.opencontainers.image.version": """($stamp.STABLE_BUILD_VERSION // "MISSING")""",
     },
+    tars = [
+        ":layers",
+    ],
+    visibility = ["//visibility:public"],
 )
 
 platform_transition_filegroup(
@@ -150,25 +151,26 @@ multi_arch(
     ],
 )
 
-oci_tarball(
-    name = "tarball",
-    image = ":image",
-    tags = ["example/image:amd64"]
-)
+# TODO: Debug why this is breaking now
+#oci_tarball(
+#    name = "tarball",
+#    image = ":image",
+#    tags = ["example/image:latest"],
+#)
 
 oci_push(
     name = "push_image",
     image = ":transitioned_image",
-    repository = "067333984569.dkr.ecr.af-south-1.amazonaws.com/example",
     remote_tags = ":stamped",
+    repository = "067333984569.dkr.ecr.af-south-1.amazonaws.com/example",
 )
 
 # Push all images
 oci_push(
     name = "push_image_index",
     image = ":image_index",
-    repository = "067333984569.dkr.ecr.af-south-1.amazonaws.com/example",
     remote_tags = ":stamped",
+    repository = "067333984569.dkr.ecr.af-south-1.amazonaws.com/example",
     visibility = ["//visibility:public"],
 )
 
@@ -189,4 +191,3 @@ stamp_tags(
     ],
     visibility = ["//visibility:public"],
 )
-
