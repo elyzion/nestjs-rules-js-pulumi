@@ -124,6 +124,7 @@ const kubernetesStack = function(version: string): PulumiFn {
         ingressClassName: "alb",
         rules: [{
           host: "echo-1.dev.eaas.wassha.org",
+          
           http: {
             paths: [{
               path: "/",
